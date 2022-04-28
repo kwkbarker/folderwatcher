@@ -1,2 +1,8 @@
 venv/
 venv
+.venv
+.venv/
+virtualenv
+virtualenv/
+env
+env/
