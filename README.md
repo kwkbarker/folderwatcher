@@ -1,5 +1,15 @@
 # folderwatcher
 
+## install dependencies
+
+install python 3.
+install git.
+## clone this repository
+
+navigate in the terminal to the directory where you want the action folder. enter the command:
+
+    git clone https://github.com/kwkbarker/folderwatcher.git
+
 ## create virtual environment
 
 python3 -m pip venv venv
