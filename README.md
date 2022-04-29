@@ -12,12 +12,18 @@ navigate in the terminal to the directory where you want the action folder. ente
 
 ## create virtual environment
 
+### mac
 python3 -m pip venv venv
+
+### windows
+pip install virtualenv
+virtualenv --python C:\Path\To\Python\python.exe venv
 
 ## start venv
 
 source venv/bin/activate  //mac
 
+.\venv\Scripts\activate  //windows
 
 ## install dependencies
 
