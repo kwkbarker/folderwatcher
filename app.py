@@ -27,16 +27,18 @@ import shutil
 class Watch():
   
 
-  path =  "./DROP_FILES_HERE"
+  path = sys.argv[1] if len(sys.argv) > 1 else "./DROP_FILES_HERE"
   if not os.path.isdir(path):
     os.makedirs(path)
+  rt, parent_folder = os.path.split(path)
+  print(parent_folder)
 
   def __init__(self, dest):
       self.observer = Observer()
       self.destination = dest
 
   def run(self):
-    event_handler = Handler(self.destination)
+    event_handler = Handler(self.destination, self.parent_folder)
   
     self.observer.schedule(event_handler, self.path, recursive=True)
     self.observer.start()
@@ -51,14 +53,15 @@ class Watch():
   
 class Handler(FileSystemEventHandler):
 
-  def __init__(self, dest):
+  def __init__(self, dest, parent):
       self.dest = dest
+      self.parent = parent
 
   def on_created(self, event):
         if event.is_directory:
-          print("path: " + event.src_path)
+          print("src path: " + event.src_path)
           root, dir_name = os.path.split(event.src_path)
-          if dir_name != "DROP_FILES_HERE":
+          if dir_name != self.parent:
             ticket_name = dir_name.split('-')[-1]
             new_path = os.path.join(root, ticket_name)
             os.rename(event.src_path, new_path)
