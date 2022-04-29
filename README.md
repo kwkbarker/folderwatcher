@@ -2,8 +2,8 @@
 
 ## install dependencies
 
-install python 3.
-install git.
+install python 3
+install git
 ## clone this repository
 
 navigate in the terminal to the directory where you want the action folder. enter the command:
@@ -17,7 +17,7 @@ python3 -m pip venv venv
 
 ### windows
 pip install virtualenv
-virtualenv --python C:\Path\To\Python\python.exe venv
+virtualenv venv
 
 ## start venv
 
