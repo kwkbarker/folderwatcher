@@ -22,7 +22,8 @@ from watchdog.events import LoggingEventHandler, FileSystemEventHandler
 import sys
 import os
 import time
-import shutil
+# import shutil
+from move_with_progress import copyFilesWithProgress
 
 class Watch():
   
@@ -31,7 +32,7 @@ class Watch():
   if not os.path.isdir(path):
     os.makedirs(path)
   rt, parent_folder = os.path.split(path)
-  print(parent_folder)
+  print("Drop Box: " + path)
 
   def __init__(self, dest):
       self.observer = Observer()
@@ -59,7 +60,6 @@ class Handler(FileSystemEventHandler):
 
   def on_created(self, event):
         if event.is_directory:
-          print("src path: " + event.src_path)
           root, dir_name = os.path.split(event.src_path)
           if dir_name != self.parent:
             ticket_name = dir_name.split('-')[-1]
@@ -79,8 +79,10 @@ class Handler(FileSystemEventHandler):
 
             destination = os.path.join(self.dest, destination_subfolder, ticket_name)
 
-            dest = shutil.move(new_path, destination)
-            print(dest)
+            copyFilesWithProgress(new_path, destination)
+            # dest = shutil.move(new_path, destination)
+            # print(dest)
+            os.rmdir(new_path)
 
 
 if __name__ == "__main__":
