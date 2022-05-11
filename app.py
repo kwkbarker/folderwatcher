@@ -1,4 +1,5 @@
 from posixpath import dirname
+import shutil
 from tkinter import filedialog
 import tkinter as tk
 
@@ -82,7 +83,9 @@ class Handler(FileSystemEventHandler):
             copyFilesWithProgress(new_path, destination)
             # dest = shutil.move(new_path, destination)
             # print(dest)
-            os.rmdir(new_path)
+
+            shutil.rmtree(new_path)
+            
 
 
 if __name__ == "__main__":

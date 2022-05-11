@@ -80,4 +80,4 @@ def copyFilesWithProgress(src, dest):
             numCopied += 1
 
             p.calculateAndUpdate(numCopied, numFiles)
-    
+            
