@@ -2,7 +2,7 @@ import sys
 
 class ProgressBar(object):
 
-    def __init__(self, message, width=20, progressSymbol=u'▣ ', emptySymbol=u'□ '):
+    def __init__(self, message, width=20, progressSymbol='O', emptySymbol='X'):
         self.width = width
 
         if self.width < 0:
@@ -22,9 +22,9 @@ class ProgressBar(object):
         self.emptySymbol * emptyBlocks
 
         if not self.message:
-            self.message = u''
+            self.message = ''
 
-        progressMessage = u'\r{0} {1} {2}%'.format(self.message,
+        progressMessage = '\r{0} {1} {2}%'.format(self.message,
         progressBar,
         progress)
         if progress != 100:
