@@ -54,6 +54,18 @@ def makedirs(dest):
     if not os.path.exists(dest):
         os.makedirs(dest)
 
+
+def remove_folders(path):
+    dir = os.listdir(path)
+
+    if len(dir) == 0:
+        os.rmdir(path)
+    else:
+        for sub in dir:
+            sub_path = os.path.join(path, sub) 
+            remove_folders(sub_path)
+        os.rmdir(path)
+
 import shutil
 
 def copyFilesWithProgress(src, dest):
@@ -80,4 +92,5 @@ def copyFilesWithProgress(src, dest):
             numCopied += 1
 
             p.calculateAndUpdate(numCopied, numFiles)
-            
+
+    # remove_folders(src)

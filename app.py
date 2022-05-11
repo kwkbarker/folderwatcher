@@ -1,13 +1,12 @@
-from posixpath import dirname
 import shutil
 from tkinter import filedialog
 import tkinter as tk
 
 CATEGORIES = [
-  '_Apose',
-  '_Statue',
-  '_Bad',
-  '_Custom'
+  'Apose',
+  'Statue',
+  'Bad',
+  'Custom'
 ]
 
 
@@ -19,16 +18,13 @@ def getDestinationFolder():
 
 
 from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler, FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler
 import sys
 import os
 import time
-# import shutil
 from move_with_progress import copyFilesWithProgress
 
 class Watch():
-  
-
   path = sys.argv[1] if len(sys.argv) > 1 else "./DROP_FILES_HERE"
   if not os.path.isdir(path):
     os.makedirs(path)
@@ -56,37 +52,38 @@ class Watch():
 class Handler(FileSystemEventHandler):
 
   def __init__(self, dest, parent):
-      self.dest = dest
-      self.parent = parent
+    self.dest = dest
+    self.parent = parent
 
   def on_created(self, event):
-        if event.is_directory:
-          root, dir_name = os.path.split(event.src_path)
-          if dir_name != self.parent:
-            ticket_name = dir_name.split('-')[-1]
-            new_path = os.path.join(root, ticket_name)
-            os.rename(event.src_path, new_path)
+    if event.is_directory:
+      root, dir_name = os.path.split(event.src_path)
+      if os.path.exists(event.src_path):
+        if dir_name != self.parent:
+          ticket_name = dir_name.split('-')[-1]
+          new_path = os.path.join(root, ticket_name)
+          os.rename(event.src_path, new_path)
 
-            pose = ticket_name.split('_')[-1]
+          pose = ticket_name.split('_')[-1]
 
-            if pose.lower() == 'a':
-              destination_subfolder = '_Apose'
-            elif pose.lower() == 's':
-              destination_subfolder = '_Statue'
-            elif pose.lower() == 'b' or pose.lower() == 'bad':
-              destination_subfolder = '_Bad'
-            else:
-              destination_subfolder = '_Custom'
+          if pose.lower() == 'a':
+            destination_subfolder = 'Apose'
+          elif pose.lower() == 's':
+            destination_subfolder = 'Statue'
+          elif pose.lower() == 'b' or pose.lower() == 'bad':
+            destination_subfolder = 'Bad'
+          else:
+            destination_subfolder = 'Custom'
 
-            destination = os.path.join(self.dest, destination_subfolder, ticket_name)
+          destination = os.path.join(self.dest, destination_subfolder, ticket_name)
 
-            copyFilesWithProgress(new_path, destination)
-            # dest = shutil.move(new_path, destination)
-            # print(dest)
+          copyFilesWithProgress(new_path, destination)
 
-            shutil.rmtree(new_path)
+          shutil.rmtree(new_path)
+
+          print('DONE')
+
             
-
 
 if __name__ == "__main__":
   dest = getDestinationFolder()
