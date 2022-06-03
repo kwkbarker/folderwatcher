@@ -6,7 +6,8 @@ CATEGORIES = [
   'Apose',
   'Statue',
   'Bad',
-  'Custom'
+  'Custom',
+  'Archive'
 ]
 
 
@@ -76,8 +77,10 @@ class Handler(FileSystemEventHandler):
             destination_subfolder = 'Custom'
 
           destination = os.path.join(self.dest, destination_subfolder, ticket_name)
+          archive = os.path.join(self.dest, 'Archive', ticket_name)
 
           copyFilesWithProgress(new_path, destination)
+          copyFilesWithProgress(new_path, archive)
 
           shutil.rmtree(new_path)
 
