@@ -68,7 +68,7 @@ def remove_folders(path):
 
 import shutil
 
-def copyFilesWithProgress(src, dest):
+def copyFilesWithProgress(src, dest, protocol="move"):
     p = ProgressBar('Moving folders... ')
     numFiles = countFiles(src)
 
@@ -87,10 +87,12 @@ def copyFilesWithProgress(src, dest):
 
             destFile = os.path.join(path.replace(src, dest), sfile)
 
-            shutil.move(srcFile, destFile)
+            if protocol == "copy":
+                shutil.copy(srcFile, destFile)
+            else:
+                shutil.move(srcFile, destFile)
 
             numCopied += 1
 
             p.calculateAndUpdate(numCopied, numFiles)
 
-    # remove_folders(src)
