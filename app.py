@@ -6,8 +6,7 @@ CATEGORIES = [
   'Apose',
   'Statue',
   'Bad',
-  'Custom',
-  'Archive'
+  'Custom'
 ]
 
 
@@ -77,7 +76,8 @@ class Handler(FileSystemEventHandler):
             destination_subfolder = 'Custom'
 
           destination = os.path.join(self.dest, destination_subfolder, ticket_name)
-          archive = os.path.join(self.dest, 'Archive', ticket_name)
+          archive = os.path.join("./Archive", ticket_name)
+          
 
           copyFilesWithProgress(new_path, destination, "copy")
           copyFilesWithProgress(new_path, archive)
@@ -93,6 +93,9 @@ if __name__ == "__main__":
   for cat in CATEGORIES:
     if not os.path.exists(os.path.join(dest, cat)):
       os.makedirs(os.path.join(dest, cat))
+  if not os.path.exists("./Archive"):
+    os.makedirs("./Archive")
+
   watch = Watch(dest)
   watch.run()
   
