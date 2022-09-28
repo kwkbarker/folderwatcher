@@ -1,4 +1,6 @@
 import sys
+from tkinter import *
+from tkinter import ttk
 
 class ProgressBar(object):
 
@@ -69,7 +71,15 @@ def remove_folders(path):
 import shutil
 
 def copyFilesWithProgress(src, dest, protocol="move"):
-    p = ProgressBar('Moving folders... ')
+    # p = ProgressBar('Moving folders... ')
+
+    p = ttk.Progressbar(
+        root, 
+        orient="horizontal", 
+        length=320,
+        mode="determinate"
+    )
+
     numFiles = countFiles(src)
 
     if numFiles > 0:
@@ -94,5 +104,5 @@ def copyFilesWithProgress(src, dest, protocol="move"):
 
             numCopied += 1
 
-            p.calculateAndUpdate(numCopied, numFiles)
+            p["value"] = numCopied/numFiles
 

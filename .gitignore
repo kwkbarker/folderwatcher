@@ -2,6 +2,11 @@ venv/
 venv
 
 DROP_FILES_HERE/
+Apose/
+Bad/
+Custom/
+Statue/
+Archive/
 
 __pycache__/
 test stuff/

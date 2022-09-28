@@ -1,2 +1,2 @@
-tk==0.1.0
 watchdog==2.1.7
+opencv-python
