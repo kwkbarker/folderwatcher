@@ -319,9 +319,6 @@ def renderThumbNum():
       command=lambda: getThumbFolder(thumbButton)
     )
 
-    # field to enter thumbnail index #
-    thumbNum=Entry(thumbFrame, width=5)
-
     # Thumb DIR indicator
     thumbLabel = ttk.Label(thumbFrame)
     thumbLabel["text"] = "Thumbnail Directory: "
@@ -434,6 +431,8 @@ if __name__ == "__main__":
 
   # FRAME for content that appears on thumbnail check
   thumbFrame = ttk.Frame(leftFrame)
+  # field to enter thumbnail index #
+  thumbNum=Entry(thumbFrame, width=5)
 
   # thumb variables
   thumb = StringVar(leftFrame)
