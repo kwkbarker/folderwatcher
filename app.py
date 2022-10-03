@@ -1,3 +1,4 @@
+from ast import arg
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
@@ -206,26 +207,65 @@ class Handler(FileSystemEventHandler):
 
           lbText("Process complete.")
 
+def setButtonColorRG(button, variable):
+   # SET BUTTON COLORS
+  if variable.get() == "None Selected":
+    button.config(style= "redButton.TButton")
+  else:
+    button.config(style= "greenButton.TButton")
+
+def checkRunButtonState():
+  print("checking")
+  if var.get() == "None Selected" or drop.get() == "None Selected" or \
+    arch.get() == "None Selected":
+    runButton.state(["disabled"])
+  else:
+    if thumbnail.get():
+      if thumb.get() == "None Selected":
+        runButton.state(["disabled"])
+      else:
+        runButton.state(["!disabled"])
+    else:
+      runButton.state(["!disabled"])
+
 
 def getDestinationFolder():
   dirname =  filedialog.askdirectory()
   if dirname:
     var.set(dirname)
+    folder = os.path.split(dirname)[-1]
+    destAbbr.set(f".../{folder}")
+  setButtonColorRG(destButton, var)
+  checkRunButtonState()
 
 def getDropFolder():
   dirname =  filedialog.askdirectory()
   if dirname:
     drop.set(dirname)
+    folder = os.path.split(dirname)[-1]
+    dropAbbr.set(f".../{folder}")
+  setButtonColorRG(dropButton, drop)
+  checkRunButtonState()
 
-def getThumbFolder():
+
+def getThumbFolder(thumbButton):
   dirname =  filedialog.askdirectory()
   if dirname:
     thumb.set(dirname)
+    folder = os.path.split(dirname)[-1]
+    thumbAbbr.set(f".../{folder}")
+  setButtonColorRG(thumbButton, thumb)
+  checkRunButtonState()
 
 def getArchiveFolder():
   dirname =  filedialog.askdirectory()
   if dirname:
     arch.set(dirname)
+    folder = os.path.split(dirname)[-1]
+    archAbbr.set(f".../{folder}")
+  setButtonColorRG(archButton, arch)
+  checkRunButtonState()
+
 
 def UserFileInput(status,name, dropstatus, dropname, archstatus, archname):
   optionFrame = ttk.Frame(leftFrame)
@@ -234,8 +274,10 @@ def UserFileInput(status,name, dropstatus, dropname, archstatus, archname):
   optionLabel.grid(row=2, column=0, padx=5, pady=5, sticky=W)
 
   var = StringVar(leftFrame)
+  destAbbr = StringVar(leftFrame)
   var.set(status)
-  w = Label(optionFrame, textvariable=var)
+  destAbbr.set(status)
+  w = Label(optionFrame, textvariable=destAbbr)
   w.grid(row=2, column=2, padx=5, pady=5, sticky=W)
   optionFrame.grid(row=2, column=0, padx=5, pady=5, sticky=W)
 
@@ -245,8 +287,10 @@ def UserFileInput(status,name, dropstatus, dropname, archstatus, archname):
   dropLabel.grid(row=5, column=0, padx=5, pady=5, sticky=W)
 
   drop = StringVar(leftFrame)
+  dropAbbr = StringVar(leftFrame)
   drop.set(dropstatus)
-  dropw = Label(dropFrame, textvariable=drop)
+  dropAbbr.set(dropstatus)
+  dropw = Label(dropFrame, textvariable=dropAbbr)
   dropw.grid(row=5, column=2, padx=5, pady=5, sticky=W)
   dropFrame.grid(row=5, column=0, padx=5, pady=5, sticky=W) 
 
@@ -256,41 +300,74 @@ def UserFileInput(status,name, dropstatus, dropname, archstatus, archname):
   archLabel.grid(row=8, column=0, padx=5, pady=5, sticky=W)
   
   arch = StringVar(leftFrame)
+  archAbbr = StringVar(leftFrame)
   arch.set(archstatus)
-  archw = Label(archFrame, textvariable=arch)
-  archw.grid(row=8, column=2, padx=5, pady=5, sticky=W)
+  archAbbr.set(archstatus)
+  archw = Label(archFrame, textvariable=archAbbr)
+  archw.grid(row=8, column=3, padx=5, pady=5, sticky=E)
   archFrame.grid(row=8, column=0, padx=5, pady=5, sticky=W)
 
-  return var, drop, arch
+  return var, destAbbr, drop, dropAbbr, arch, archAbbr
 
 
 def renderThumbNum():
   if thumbnail.get():
-    thumbButton.grid(row=12, column=0, padx=5, pady=5, sticky=W)
-    l=Label(leftFrame, text="Thumbnail Photo Index")
+    # set thumb dir button
+    thumbButton = ttk.Button(
+      thumbFrame,
+      text="Set Thumbnail Folder",
+      command=lambda: getThumbFolder(thumbButton)
+    )
+
+    # field to enter thumbnail index #
+    thumbNum=Entry(thumbFrame, width=5)
+
+    # Thumb DIR indicator
+    thumbLabel = ttk.Label(thumbFrame)
+    thumbLabel["text"] = "Thumbnail Directory: "
+    thumbButton.config(style= "redButton.TButton")
+    thumbw = Label(thumbFrame, textvariable=thumbAbbr)
+    thumbButton.grid(row=11, column=0, padx=5, pady=5, sticky=W)
+    l=Label(thumbFrame, text="Thumbnail Photo Index")
     l.grid(row=13, column=0, padx=5, pady=5, sticky=E)
     
     thumbNum.grid(row=13, column=1, padx=5, pady=5, sticky=W)
-    thumbw.grid(row=11, column=2, padx=5, pady=5, sticky=W)
-    thumbFrame.grid(row=11, column=0, padx=5, pady=5, sticky=W)
-    thumbLabel.grid(row=11, column=0, padx=5, pady=5, sticky=W)
+    thumbw.grid(row=12, column=2, padx=5, pady=5, sticky=W)
+    thumbFrame.grid(row=12, column=0, padx=5, pady=5, sticky=W)
+    thumbLabel.grid(row=12, column=0, padx=5, pady=5, sticky=W)
+    checkRunButtonState()
   else:
-    for widget in thumbNum.winfo_children():
+    for widget in thumbFrame.winfo_children():
       widget.destroy()
+    checkRunButtonState()
 
 
 if __name__ == "__main__":
-  # dest = getDestinationFolder()
 
   root = Tk()
   root.geometry("900x550")
   root.title("FolderWatcher")
+  root.config(bg="grey")
 
-  leftFrame = Frame(root, borderwidth=2, relief="solid", width=200, height=600)
+  style = ttk.Style(root)
+  style.theme_use('default')
+  style.configure("redButton.TButton", background="red")
+  style.configure("greenButton.TButton", background="green")
+  style.configure("blueButton.TButton", background="blue", foreground="white")
+  style.configure("yellowButton.TButton", background="yellow")
+  style.configure("TFrame", background="lightgrey")
+  style.configure("TLabel", background="lightgrey")
+
+  root.grid_rowconfigure(0, minsize=400, weight=1)
+  root.grid_columnconfigure(0, minsize=400, weight=1)
+  root.grid_columnconfigure(1, weight=1)
+
+  leftFrame = Frame(root, borderwidth=2, relief="solid", width=400, height=600)
+  leftFrame.config(background="lightgrey")
   leftFrame.grid(row=0, column=0, padx=10, pady=5)
 
-  rightFrame = Frame(root, borderwidth=2, relief="solid", width=500, height=600)
-  rightFrame.grid(row=0, column=1, padx=10, pady=5)
+  rightFrame = Frame(root, borderwidth=2, relief="solid", width=450, height=600)
+  rightFrame.grid(row=0, column=1, padx=10, pady=5, sticky=E)
   pbarFrame = Frame(rightFrame)
   pbarFrame.pack(side=BOTTOM)
   ttk.Progressbar(
@@ -303,35 +380,43 @@ if __name__ == "__main__":
 
 
 
-  ttk.Button(
+  destButton = ttk.Button(
     leftFrame,
     text="Set Destination Folder",
     command=getDestinationFolder
-  ).grid(row=1, column=0, padx=5, pady=5, sticky=W)
-
+  )
+  destButton.grid(row=1, column=0, padx=5, pady=5, sticky=W)
+  destButton.config(style= "redButton.TButton")
   
 
-  ttk.Button(
+  dropButton = ttk.Button(
     leftFrame,
     text="Set Drop Folder",
     command=getDropFolder
-  ).grid(row=4, column=0, padx=5, pady=5, sticky=W)
+  )
+  dropButton.grid(row=4, column=0, padx=5, pady=5, sticky=W)
+  dropButton.config(style= "redButton.TButton")
 
-  ttk.Button(
+
+  archButton = ttk.Button(
     leftFrame,
     text="Set Archive Folder",
     command=getArchiveFolder
-  ).grid(row=7, column=0, padx=5, pady=5, sticky=W)
+  )
+  archButton.grid(row=7, column=0, padx=5, pady=5, sticky=W)
+  archButton.config(style= "redButton.TButton")
 
 
 
 
 
-  var, drop, arch = UserFileInput(
+
+  var, destAbbr, drop, dropAbbr, arch, archAbbr = UserFileInput(
     "None Selected", "Destination Directory: ", 
     "None Selected", "Drop Folder: ", 
     "None Selected", "Archive Folder: "
     )
+  
 
   scrollbar = Scrollbar(rightFrame, orient='vertical')
   scrollbar.pack(side=RIGHT, fill=BOTH)
@@ -345,22 +430,19 @@ if __name__ == "__main__":
   lbidx = IntVar()
   lbidx.set(0)
 
-  thumbnail = BooleanVar(root)
-  thumbNum=Entry(leftFrame, width=5)
-  thumbButton = ttk.Button(
-    leftFrame,
-    text="Set Thumbnail Folder",
-    command=getThumbFolder
-  )
+
+
+  # FRAME for content that appears on thumbnail check
   thumbFrame = ttk.Frame(leftFrame)
-  thumbLabel = ttk.Label(thumbFrame)
-  thumbLabel["text"] = "Thumbnail Directory: "
-  
-  
+
+  # thumb variables
   thumb = StringVar(leftFrame)
+  thumbAbbr = StringVar(leftFrame)
   thumb.set("None Selected")
-  thumbw = Label(thumbFrame, textvariable=thumb)
+  thumbAbbr.set("None Selected")
   
+  #THUMBNAIL CHECKBOX
+  thumbnail = BooleanVar(root)
   ttk.Checkbutton(
     leftFrame,
     text="Extract Thumbnails",
@@ -368,11 +450,14 @@ if __name__ == "__main__":
     command=renderThumbNum
   ).grid(row=10, column=0, padx=5, pady=5, sticky=W)
 
-  ttk.Button(
+  runButton = ttk.Button(
     leftFrame,
     text="Run Watcher",
     command=runWatcher
-  ).grid(row=15, column=0, padx=5, pady=5, sticky=W)
+  )
+  runButton.config(style="blueButton.TButton")
+  runButton.state(["disabled"])
+  runButton.grid(row=15, column=0, padx=5, pady=5, sticky=S)
 
   
   root.mainloop()
