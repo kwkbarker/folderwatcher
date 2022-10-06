@@ -1,4 +1,4 @@
-from ast import arg
+import threading
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
@@ -8,6 +8,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import shutil
 import cv2 as cv
+import multiprocessing as mp
 
 CATEGORIES = [
   'Apose',
@@ -15,7 +16,6 @@ CATEGORIES = [
   'Bad',
   'Custom'
 ]
-
 
 def countFiles(directory):
     files = []
@@ -26,12 +26,9 @@ def countFiles(directory):
 
     return len(files)
 
-
-
 def makedirs(dest):
     if not os.path.exists(dest):
         os.makedirs(dest)
-
 
 def remove_folders(path):
     dir = os.listdir(path)
@@ -45,20 +42,166 @@ def remove_folders(path):
         os.rmdir(path)
 
 
-def copyFilesWithProgress(src, dest, thumbName, protocol="move"):
+class Watch():
+  
+  def __init__(self, dest, dropbox):
+      self.observer = Observer()
+      self.destination = dest
+      self.dropbox = dropbox
+
+  def run(self, gui):
+    if not os.path.isdir(self.dropbox):
+      os.makedirs(self.dropbox)
+    rt, parent_folder = os.path.split(self.dropbox)
+    event_handler = Handler(self.destination, parent_folder, gui)
+  
+    self.observer.schedule(event_handler, self.dropbox, recursive=True)
+    self.observer.start()
+    
+    try:
+      while gui.watchdog != None:
+        print("watch running")
+        time.sleep(5)
+    except KeyboardInterrupt:
+      self.observer.stop()
+    
+    if self.observer:
+      self.observer.join()
+
+  def stop(self):
+    self.observer.stop()
+    self.observer.join()
+    self.observer = None
+    
+  
+class Handler(FileSystemEventHandler):
+
+  def __init__(self, dest, parent, gui):
+    self.dest = dest
+    self.parent = parent
+    self.gui = gui
+
+  def on_created(self, event):
+    if event.is_directory:
+      src, dir_name = os.path.split(event.src_path)
+      
+      if os.path.exists(event.src_path):
+       
+        if dir_name != self.parent:
+          # remove leading numbers
+          ticket_name_list = dir_name.split('-')[1:]
+          if len(ticket_name_list) > 1 and ticket_name_list[0].isnumeric()\
+              and ticket_name_list[1].isnumeric():
+            ticket_name = ""
+            for tnl in ticket_name_list:
+              ticket_name = ticket_name + tnl + "-"
+            ticket_name = ticket_name[:-1]
+          else:
+            ticket_name = dir_name
+          # rename original folder
+          new_path = os.path.join(src, ticket_name)
+          os.rename(event.src_path, new_path)
+
+          #determine pose folder based on filename suffix
+          pose = ticket_name.split('_')[-1]
+
+          if pose.lower() == 'a':
+            destination_subfolder = 'Apose'
+          elif pose.lower() == 's':
+            destination_subfolder = 'Statue'
+          elif pose.lower() == 'b' or pose.lower() == 'bad':
+            destination_subfolder = 'Bad'
+          else:
+            destination_subfolder = 'Custom'
+
+          destination = os.path.join(self.dest, destination_subfolder, ticket_name)
+          archive = os.path.join(self.gui.arch.get(), dir_name)
+
+          self.gui.lbText("Moving folder " + dir_name + "...")
+          
+          self.gui.copyFilesWithProgress(new_path, destination, dir_name, "copy")
+
+          self.gui.lbText("Archiving folder " + dir_name + "...")
+          self.gui.copyFilesWithProgress(new_path, archive, None)
+
+          shutil.rmtree(new_path)
+
+          self.gui.lbText("Process complete.")
+
+
+class GUI:
+
+  def setButtonColorRG(self, button, variable):
+    # SET BUTTON COLORS
+    if variable.get() == "None Selected":
+      button.config(style= "redButton.TButton")
+    else:
+      button.config(style= "greenButton.TButton")
+
+  def checkRunButtonState(self):
+    if self.var.get() == "None Selected" or self.drop.get() == "None Selected" or \
+      self.arch.get() == "None Selected":
+      self.runButton.state(["disabled"])
+    else:
+      if self.thumbnail.get():
+        if self.thumb.get() == "None Selected":
+          self.runButton.state(["disabled"])
+        else:
+          self.runButton.state(["!disabled"])
+      else:
+        self.runButton.state(["!disabled"])
+
+
+  def getDestinationFolder(self):
+    dirname =  filedialog.askdirectory()
+    if dirname:
+      self.var.set(dirname)
+      folder = os.path.split(dirname)[-1]
+      self.destAbbr.set(f".../{folder}")
+    self.setButtonColorRG(self.destButton, self.var)
+    self.checkRunButtonState()
+
+  def getDropFolder(self):
+    dirname =  filedialog.askdirectory()
+    if dirname:
+      self.drop.set(dirname)
+      folder = os.path.split(dirname)[-1]
+      self.dropAbbr.set(f".../{folder}")
+    self.setButtonColorRG(self.dropButton, self.drop)
+    self.checkRunButtonState()
+
+
+  def getThumbFolder(self, thumbButton):
+    dirname =  filedialog.askdirectory()
+    if dirname:
+      self.thumb.set(dirname)
+      folder = os.path.split(dirname)[-1]
+      self.thumbAbbr.set(f".../{folder}")
+    self.setButtonColorRG(thumbButton, self.thumb)
+    self.checkRunButtonState()
+
+  def getArchiveFolder(self):
+    dirname =  filedialog.askdirectory()
+    if dirname:
+      self.arch.set(dirname)
+      folder = os.path.split(dirname)[-1]
+      self.archAbbr.set(f".../{folder}")
+    self.setButtonColorRG(self.archButton, self.arch)
+    self.checkRunButtonState()
+
+
+  def copyFilesWithProgress(self, src, dest, thumbName, protocol="move"):
 
     # PROGRESS BAR
-    for widget in pbarFrame.winfo_children():
-       widget.destroy()
+    for widget in self.pbarFrame.winfo_children():
+      widget.destroy()
     p = ttk.Progressbar(
-        pbarFrame, 
+        self.pbarFrame, 
         orient="horizontal", 
         length=320,
         mode="determinate"
     )
     p.pack()
-
-
 
     numFiles = countFiles(src)
 
@@ -81,12 +224,12 @@ def copyFilesWithProgress(src, dest, thumbName, protocol="move"):
                 shutil.copy(srcFile, destFile)
 
                 # thumbnail creation
-                if thumbnail.get():   
-                  if f"{thumbNum.get()}.jpg" in sfile:
+                if self.thumbnail.get():   
+                  if f"{self.thumbNum.get()}.jpg" in sfile:
                     newFilename = f"{thumbName}.jpg"
                     newSrc = os.path.join(path, newFilename)
                     os.rename(srcFile, newSrc)
-                    destThumb = os.path.join(thumb.get(), newFilename)
+                    destThumb = os.path.join(self.thumb.get(), newFilename)
                     img = cv.imread(newSrc)
                     scale_percent = 60 # percent of original size
                     width = int(img.shape[1] * scale_percent / 100)
@@ -103,361 +246,240 @@ def copyFilesWithProgress(src, dest, thumbName, protocol="move"):
 
             p["value"] = int((numCopied/numFiles) * 100)
 
-def lbText(text):
-  lbidx.set(lbidx.get() +1)
-  lb.insert(lbidx.get(), text)
+  def lbText(self, text):
+    self.lbidx.set(self.lbidx.get() +1)
+    self.lb.insert(self.lbidx.get(), text)
 
-import threading
-
-def startWatch():
-  watch = Watch(var.get(), drop.get())
-  watch.run()
-
-def runWatcher():
-  dest = var.get()
-
-  for cat in CATEGORIES:
-    if not os.path.exists(os.path.join(dest, cat)):
-      os.makedirs(os.path.join(dest, cat))
-  if not os.path.exists(arch.get()):
-    os.makedirs(arch.get())
-  if not os.path.exists(thumb.get()):
-    os.makedirs(thumb.get())
-
-  
-
-  thread = threading.Thread(target=startWatch)
-  thread.start()
-
-  return
-
-
-class Watch():
-  
-  def __init__(self, dest, dropbox="./DROP_FILES_HERE"):
-      self.observer = Observer()
-      self.destination = dest
-      self.dropbox = dropbox
-
-  def run(self):
-    lbText("Observer running.")
-    if not os.path.isdir(self.dropbox):
-      os.makedirs(self.dropbox)
-    rt, parent_folder = os.path.split(self.dropbox)
-    event_handler = Handler(self.destination, parent_folder)
-  
-    self.observer.schedule(event_handler, self.dropbox, recursive=True)
-    self.observer.start()
-    try:
-      while True:
-        time.sleep(5)
-    except:
-      self.observer.stop()
-      lbText("Observer stopped.")
-    
-    self.observer.join()
-    
-  
-class Handler(FileSystemEventHandler):
-
-  def __init__(self, dest, parent):
-    self.dest = dest
-    self.parent = parent
-
-  def on_created(self, event):
-    if event.is_directory:
-      src, dir_name = os.path.split(event.src_path)
-      
-      if os.path.exists(event.src_path):
-       
-        if dir_name != self.parent:
-          # remove leading numbers
-          ticket_name_list = dir_name.split('-')[1:]
-          ticket_name = ""
-          for tnl in ticket_name_list:
-            ticket_name = ticket_name + tnl + "-"
-          ticket_name = ticket_name[:-1]
-          # rename original folder
-          new_path = os.path.join(src, ticket_name)
-          os.rename(event.src_path, new_path)
-
-          #determine pose folder based on filename suffix
-          pose = ticket_name.split('_')[-1]
-
-          if pose.lower() == 'a':
-            destination_subfolder = 'Apose'
-          elif pose.lower() == 's':
-            destination_subfolder = 'Statue'
-          elif pose.lower() == 'b' or pose.lower() == 'bad':
-            destination_subfolder = 'Bad'
-          else:
-            destination_subfolder = 'Custom'
-
-          destination = os.path.join(self.dest, destination_subfolder, ticket_name)
-          archive = os.path.join(arch.get(), dir_name)
-
-          lbText("Moving folder " + dir_name + "...")
-          
-          copyFilesWithProgress(new_path, destination, dir_name, "copy")
-
-          lbText("Archiving folder " + dir_name + "...")
-          copyFilesWithProgress(new_path, archive, None)
-
-          shutil.rmtree(new_path)
-
-          lbText("Process complete.")
-
-def setButtonColorRG(button, variable):
-   # SET BUTTON COLORS
-  if variable.get() == "None Selected":
-    button.config(style= "redButton.TButton")
-  else:
-    button.config(style= "greenButton.TButton")
-
-def checkRunButtonState():
-  print("checking")
-  if var.get() == "None Selected" or drop.get() == "None Selected" or \
-    arch.get() == "None Selected":
-    runButton.state(["disabled"])
-  else:
-    if thumbnail.get():
-      if thumb.get() == "None Selected":
-        runButton.state(["disabled"])
-      else:
-        runButton.state(["!disabled"])
+  def startWatch(self):
+    if self.watchdog == None:
+      self.watchdog = Watch(self.var.get(), self.drop.get())
+      self.lbText("Watcher is running.")
+      self.runButton.config(
+        style="redButton.TButton",
+        text="Watching..."
+        )
+      self.runButton.state(["disabled"])
+      self.watchdog.run(self)
     else:
-      runButton.state(["!disabled"])
+      self.lbText("Watcher already running.")
 
-
-def getDestinationFolder():
-  dirname =  filedialog.askdirectory()
-  if dirname:
-    var.set(dirname)
-    folder = os.path.split(dirname)[-1]
-    destAbbr.set(f".../{folder}")
-  setButtonColorRG(destButton, var)
-  checkRunButtonState()
-
-def getDropFolder():
-  dirname =  filedialog.askdirectory()
-  if dirname:
-    drop.set(dirname)
-    folder = os.path.split(dirname)[-1]
-    dropAbbr.set(f".../{folder}")
-  setButtonColorRG(dropButton, drop)
-  checkRunButtonState()
-
-
-def getThumbFolder(thumbButton):
-  dirname =  filedialog.askdirectory()
-  if dirname:
-    thumb.set(dirname)
-    folder = os.path.split(dirname)[-1]
-    thumbAbbr.set(f".../{folder}")
-  setButtonColorRG(thumbButton, thumb)
-  checkRunButtonState()
-
-def getArchiveFolder():
-  dirname =  filedialog.askdirectory()
-  if dirname:
-    arch.set(dirname)
-    folder = os.path.split(dirname)[-1]
-    archAbbr.set(f".../{folder}")
-  setButtonColorRG(archButton, arch)
-  checkRunButtonState()
-
-
-def UserFileInput(status,name, dropstatus, dropname, archstatus, archname):
-  optionFrame = ttk.Frame(leftFrame)
-  optionLabel = ttk.Label(optionFrame)
-  optionLabel["text"] = name
-  optionLabel.grid(row=2, column=0, padx=5, pady=5, sticky=W)
-
-  var = StringVar(leftFrame)
-  destAbbr = StringVar(leftFrame)
-  var.set(status)
-  destAbbr.set(status)
-  w = Label(optionFrame, textvariable=destAbbr)
-  w.grid(row=2, column=2, padx=5, pady=5, sticky=W)
-  optionFrame.grid(row=2, column=0, padx=5, pady=5, sticky=W)
-
-  dropFrame = ttk.Frame(leftFrame)
-  dropLabel = ttk.Label(dropFrame)
-  dropLabel["text"] = dropname
-  dropLabel.grid(row=5, column=0, padx=5, pady=5, sticky=W)
-
-  drop = StringVar(leftFrame)
-  dropAbbr = StringVar(leftFrame)
-  drop.set(dropstatus)
-  dropAbbr.set(dropstatus)
-  dropw = Label(dropFrame, textvariable=dropAbbr)
-  dropw.grid(row=5, column=2, padx=5, pady=5, sticky=W)
-  dropFrame.grid(row=5, column=0, padx=5, pady=5, sticky=W) 
-
-  archFrame = ttk.Frame(leftFrame)
-  archLabel = ttk.Label(archFrame)
-  archLabel["text"] = archname
-  archLabel.grid(row=8, column=0, padx=5, pady=5, sticky=W)
   
-  arch = StringVar(leftFrame)
-  archAbbr = StringVar(leftFrame)
-  arch.set(archstatus)
-  archAbbr.set(archstatus)
-  archw = Label(archFrame, textvariable=archAbbr)
-  archw.grid(row=8, column=3, padx=5, pady=5, sticky=E)
-  archFrame.grid(row=8, column=0, padx=5, pady=5, sticky=W)
+  def stopWatch(self):
+    if self.watchdog != None:
+      self.lbText("Watcher stopped.")
+      self.watchdog.stop()
+      self.watchdog = None
+      self.thread.join()
+      self.root.destroy()
+    else:
+      self.lbText("No watcher is running.")
+      self.root.destroy()
 
-  return var, destAbbr, drop, dropAbbr, arch, archAbbr
+  def runWatcher(self):
+    dest = self.var.get()
 
+    for cat in CATEGORIES:
+      if not os.path.exists(os.path.join(dest, cat)):
+        os.makedirs(os.path.join(dest, cat))
+    if not os.path.exists(self.arch.get()):
+      os.makedirs(self.arch.get())
+    if not os.path.exists(self.thumb.get()):
+      os.makedirs(self.thumb.get())
 
-def renderThumbNum():
-  if thumbnail.get():
-    # set thumb dir button
-    thumbButton = ttk.Button(
-      thumbFrame,
-      text="Set Thumbnail Folder",
-      command=lambda: getThumbFolder(thumbButton)
-    )
+    if not self.thread:
+      self.thread = threading.Thread(target=self.startWatch)
+      self.thread.start()
 
-    # Thumb DIR indicator
-    thumbLabel = ttk.Label(thumbFrame)
-    thumbLabel["text"] = "Thumbnail Directory: "
-    thumbButton.config(style= "redButton.TButton")
-    thumbw = Label(thumbFrame, textvariable=thumbAbbr)
-    thumbButton.grid(row=11, column=0, padx=5, pady=5, sticky=W)
-    l=Label(thumbFrame, text="Thumbnail Photo Index")
-    l.grid(row=13, column=0, padx=5, pady=5, sticky=E)
+  def renderThumbNum(self):
+    if self.thumbnail.get():
+      # set thumb dir button
+      thumbButton = ttk.Button(
+        self.thumbFrame,
+        text="Set Thumbnail Folder",
+        command=lambda: self.getThumbFolder(thumbButton)
+      )
+
+      # Thumb DIR indicator
+      thumbLabel = ttk.Label(self.thumbFrame)
+      thumbLabel["text"] = "Thumbnail Directory: "
+      thumbButton.config(style= "redButton.TButton")
+      thumbw = Label(self.thumbFrame, textvariable=self.thumbAbbr)
+      thumbButton.grid(row=11, column=0, padx=5, pady=5, sticky=W)
+      l=Label(self.thumbFrame, text="Thumbnail Photo Index")
+      l.grid(row=13, column=0, padx=5, pady=5, sticky=E)
+      
+      self.thumbNum.grid(row=13, column=1, padx=5, pady=5, sticky=W)
+      thumbw.grid(row=12, column=2, padx=5, pady=5, sticky=W)
+      self.thumbFrame.grid(row=12, column=0, padx=5, pady=5, sticky=W)
+      thumbLabel.grid(row=12, column=0, padx=5, pady=5, sticky=W)
+      self.checkRunButtonState()
+    else:
+      for widget in self.thumbFrame.winfo_children():
+        widget.destroy()
+      self.checkRunButtonState()
+
+  def UserFileInput(self, status,name, dropstatus, dropname, archstatus, archname):
+    optionFrame = ttk.Frame(self.leftFrame)
+    optionLabel = ttk.Label(optionFrame)
+    optionLabel["text"] = name
+    optionLabel.grid(row=2, column=0, padx=5, pady=5, sticky=W)
+
+    self.var = StringVar(self.leftFrame)
+    self.destAbbr = StringVar(self.leftFrame)
+    self.var.set(status)
+    self.destAbbr.set(status)
+    w = Label(optionFrame, textvariable=self.destAbbr)
+    w.grid(row=2, column=2, padx=5, pady=5, sticky=W)
+    optionFrame.grid(row=2, column=0, padx=5, pady=5, sticky=W)
+
+    dropFrame = ttk.Frame(self.leftFrame)
+    dropLabel = ttk.Label(dropFrame)
+    dropLabel["text"] = dropname
+    dropLabel.grid(row=5, column=0, padx=5, pady=5, sticky=W)
+
+    self.drop = StringVar(self.leftFrame)
+    self.dropAbbr = StringVar(self.leftFrame)
+    self.drop.set(dropstatus)
+    self.dropAbbr.set(dropstatus)
+    dropw = Label(dropFrame, textvariable=self.dropAbbr)
+    dropw.grid(row=5, column=2, padx=5, pady=5, sticky=W)
+    dropFrame.grid(row=5, column=0, padx=5, pady=5, sticky=W) 
+
+    archFrame = ttk.Frame(self.leftFrame)
+    archLabel = ttk.Label(archFrame)
+    archLabel["text"] = archname
+    archLabel.grid(row=8, column=0, padx=5, pady=5, sticky=W)
     
-    thumbNum.grid(row=13, column=1, padx=5, pady=5, sticky=W)
-    thumbw.grid(row=12, column=2, padx=5, pady=5, sticky=W)
-    thumbFrame.grid(row=12, column=0, padx=5, pady=5, sticky=W)
-    thumbLabel.grid(row=12, column=0, padx=5, pady=5, sticky=W)
-    checkRunButtonState()
-  else:
-    for widget in thumbFrame.winfo_children():
-      widget.destroy()
-    checkRunButtonState()
+    self.arch = StringVar(self.leftFrame)
+    self.archAbbr = StringVar(self.leftFrame)
+    self.arch.set(archstatus)
+    self.archAbbr.set(archstatus)
+    archw = Label(archFrame, textvariable=self.archAbbr)
+    archw.grid(row=8, column=3, padx=5, pady=5, sticky=E)
+    archFrame.grid(row=8, column=0, padx=5, pady=5, sticky=W)
 
+  def __init__(self):
+      self.watchdog = None
+      self.thread = None
+
+      self.root = Tk()
+      self.root.geometry("900x550")
+      self.root.title("FolderWatcher")
+      self.root.config(bg="grey")
+
+      style = ttk.Style(self.root)
+      style.theme_use('default')
+      style.configure("redButton.TButton", background="red")
+      style.configure("greenButton.TButton", background="green")
+      style.configure("blueButton.TButton", background="blue", foreground="white")
+      style.configure("yellowButton.TButton", background="yellow")
+      style.configure("TFrame", background="lightgrey")
+      style.configure("TLabel", background="lightgrey")
+
+      self.root.grid_rowconfigure(0, minsize=400, weight=1)
+      self.root.grid_columnconfigure(0, minsize=400, weight=1)
+      self.root.grid_columnconfigure(1, weight=1)
+
+      self.leftFrame = Frame(self.root, borderwidth=2, relief="solid", width=400, height=600)
+      self.leftFrame.config(background="lightgrey")
+      self.leftFrame.grid(row=0, column=0, padx=10, pady=5)
+
+      self.rightFrame = Frame(self.root, borderwidth=2, relief="solid", width=450, height=600)
+      self.rightFrame.grid(row=0, column=1, padx=10, pady=5, sticky=E)
+
+      self.exitButton = ttk.Button(self.root, command=self.stopWatch,  text="EXIT")
+      self.exitButton.grid(row=100, column=0, sticky=SW, padx=5, pady=5)
+
+      self.pbarFrame = Frame(self.rightFrame)
+      self.pbarFrame.pack(side=BOTTOM)
+      ttk.Progressbar(
+            self.pbarFrame, 
+            orient="horizontal", 
+            length=500,
+            mode="determinate"
+        ).pack()
+
+      self.destButton = ttk.Button(
+        self.leftFrame,
+        text="Set Destination Folder",
+        command=self.getDestinationFolder
+      )
+      self.destButton.grid(row=1, column=0, padx=5, pady=5, sticky=W)
+      self.destButton.config(style= "redButton.TButton")
+      
+
+      self.dropButton = ttk.Button(
+        self.leftFrame,
+        text="Set Drop Folder",
+        command=self.getDropFolder
+      )
+      self.dropButton.grid(row=4, column=0, padx=5, pady=5, sticky=W)
+      self.dropButton.config(style= "redButton.TButton")
+
+
+      self.archButton = ttk.Button(
+        self.leftFrame,
+        text="Set Archive Folder",
+        command=self.getArchiveFolder
+      )
+      self.archButton.grid(row=7, column=0, padx=5, pady=5, sticky=W)
+      self.archButton.config(style= "redButton.TButton")
+
+      self.UserFileInput(
+        "/Users/kevinbarker/Dropbox/Mac/Desktop/dest/", "Destination Directory: ", 
+        "/Users/kevinbarker/Dropbox/Mac/Desktop/drop/", "Drop Folder: ", 
+        "/Users/kevinbarker/Dropbox/Mac/Desktop/arch/", "Archive Folder: "
+
+        # "None Selected", "Destination Directory: ", 
+        # "None Selected", "Drop Folder: ", 
+        # "None Selected", "Archive Folder: "
+        )
+      
+
+      scrollbar = Scrollbar(self.rightFrame, orient='vertical')
+      scrollbar.pack(side=RIGHT, fill=BOTH)
+
+      self.lb = Listbox(self.rightFrame, height=65, width=55)
+      self.lb.pack(fill=BOTH)
+
+      self.lb.config(yscrollcommand = scrollbar.set)
+      scrollbar.config(command = self.lb.yview)
+
+      self.lbidx = IntVar()
+      self.lbidx.set(0)
+
+      # FRAME for content that appears on thumbnail check
+      self.thumbFrame = ttk.Frame(self.leftFrame)
+      # field to enter thumbnail index #
+      self.thumbNum=Entry(self.thumbFrame, width=5)
+
+      # thumb variables
+      self.thumb = StringVar(self.leftFrame)
+      self.thumbAbbr = StringVar(self.leftFrame)
+      self.thumb.set("None Selected")
+      self.thumbAbbr.set("None Selected")
+      
+      #THUMBNAIL CHECKBOX
+      self.thumbnail = BooleanVar(self.root)
+      ttk.Checkbutton(
+        self.leftFrame,
+        text="Extract Thumbnails",
+        variable=self.thumbnail,
+        command=self.renderThumbNum
+      ).grid(row=10, column=0, padx=5, pady=5, sticky=W)
+
+      self.runButton = ttk.Button(
+        self.leftFrame,
+        text="Run Watcher",
+        command=self.runWatcher
+      )
+      self.runButton.config(style="blueButton.TButton")
+      self.runButton.state(["disabled"])
+      self.runButton.grid(row=15, column=0, padx=5, pady=5, sticky=S)
+ 
+      self.root.mainloop()
 
 if __name__ == "__main__":
+  GUI()
 
-  root = Tk()
-  root.geometry("900x550")
-  root.title("FolderWatcher")
-  root.config(bg="grey")
-
-  style = ttk.Style(root)
-  style.theme_use('default')
-  style.configure("redButton.TButton", background="red")
-  style.configure("greenButton.TButton", background="green")
-  style.configure("blueButton.TButton", background="blue", foreground="white")
-  style.configure("yellowButton.TButton", background="yellow")
-  style.configure("TFrame", background="lightgrey")
-  style.configure("TLabel", background="lightgrey")
-
-  root.grid_rowconfigure(0, minsize=400, weight=1)
-  root.grid_columnconfigure(0, minsize=400, weight=1)
-  root.grid_columnconfigure(1, weight=1)
-
-  leftFrame = Frame(root, borderwidth=2, relief="solid", width=400, height=600)
-  leftFrame.config(background="lightgrey")
-  leftFrame.grid(row=0, column=0, padx=10, pady=5)
-
-  rightFrame = Frame(root, borderwidth=2, relief="solid", width=450, height=600)
-  rightFrame.grid(row=0, column=1, padx=10, pady=5, sticky=E)
-  pbarFrame = Frame(rightFrame)
-  pbarFrame.pack(side=BOTTOM)
-  ttk.Progressbar(
-        pbarFrame, 
-        orient="horizontal", 
-        length=500,
-        mode="determinate"
-    ).pack()
-
-
-
-
-  destButton = ttk.Button(
-    leftFrame,
-    text="Set Destination Folder",
-    command=getDestinationFolder
-  )
-  destButton.grid(row=1, column=0, padx=5, pady=5, sticky=W)
-  destButton.config(style= "redButton.TButton")
-  
-
-  dropButton = ttk.Button(
-    leftFrame,
-    text="Set Drop Folder",
-    command=getDropFolder
-  )
-  dropButton.grid(row=4, column=0, padx=5, pady=5, sticky=W)
-  dropButton.config(style= "redButton.TButton")
-
-
-  archButton = ttk.Button(
-    leftFrame,
-    text="Set Archive Folder",
-    command=getArchiveFolder
-  )
-  archButton.grid(row=7, column=0, padx=5, pady=5, sticky=W)
-  archButton.config(style= "redButton.TButton")
-
-
-
-
-
-
-  var, destAbbr, drop, dropAbbr, arch, archAbbr = UserFileInput(
-    "None Selected", "Destination Directory: ", 
-    "None Selected", "Drop Folder: ", 
-    "None Selected", "Archive Folder: "
-    )
-  
-
-  scrollbar = Scrollbar(rightFrame, orient='vertical')
-  scrollbar.pack(side=RIGHT, fill=BOTH)
-
-  lb = Listbox(rightFrame, height=30, width=20)
-  lb.pack(fill=BOTH)
-
-  lb.config(yscrollcommand = scrollbar.set)
-  scrollbar.config(command = lb.yview)
-
-  lbidx = IntVar()
-  lbidx.set(0)
-
-
-
-  # FRAME for content that appears on thumbnail check
-  thumbFrame = ttk.Frame(leftFrame)
-  # field to enter thumbnail index #
-  thumbNum=Entry(thumbFrame, width=5)
-
-  # thumb variables
-  thumb = StringVar(leftFrame)
-  thumbAbbr = StringVar(leftFrame)
-  thumb.set("None Selected")
-  thumbAbbr.set("None Selected")
-  
-  #THUMBNAIL CHECKBOX
-  thumbnail = BooleanVar(root)
-  ttk.Checkbutton(
-    leftFrame,
-    text="Extract Thumbnails",
-    variable=thumbnail,
-    command=renderThumbNum
-  ).grid(row=10, column=0, padx=5, pady=5, sticky=W)
-
-  runButton = ttk.Button(
-    leftFrame,
-    text="Run Watcher",
-    command=runWatcher
-  )
-  runButton.config(style="blueButton.TButton")
-  runButton.state(["disabled"])
-  runButton.grid(row=15, column=0, padx=5, pady=5, sticky=S)
-
-  
-  root.mainloop()
 
