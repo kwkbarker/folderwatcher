@@ -426,13 +426,13 @@ class GUI:
       self.archButton.config(style= "redButton.TButton")
 
       self.UserFileInput(
-        "/Users/kevinbarker/Dropbox/Mac/Desktop/dest/", "Destination Directory: ", 
-        "/Users/kevinbarker/Dropbox/Mac/Desktop/drop/", "Drop Folder: ", 
-        "/Users/kevinbarker/Dropbox/Mac/Desktop/arch/", "Archive Folder: "
+        # "/Users/kevinbarker/Dropbox/Mac/Desktop/dest/", "Destination Directory: ", 
+        # "/Users/kevinbarker/Dropbox/Mac/Desktop/drop/", "Drop Folder: ", 
+        # "/Users/kevinbarker/Dropbox/Mac/Desktop/arch/", "Archive Folder: "
 
-        # "None Selected", "Destination Directory: ", 
-        # "None Selected", "Drop Folder: ", 
-        # "None Selected", "Archive Folder: "
+        "None Selected", "Destination Directory: ", 
+        "None Selected", "Drop Folder: ", 
+        "None Selected", "Archive Folder: "
         )
       
 
