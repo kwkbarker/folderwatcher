@@ -236,7 +236,7 @@ class GUI:
                       height = int(img.shape[0] * scale_percent / 100)
                       dim = (width, height)
                       cv.resize(img, dim, interpolation = cv.INTER_AREA)
-                      shutil.copy(os.path.join(newSrc), destThumb)
+                      shutil.move(os.path.join(newSrc), destThumb)
             
             else:
                 shutil.move(srcFile, destFile)
@@ -363,7 +363,7 @@ class GUI:
       self.thread = None
 
       self.root = Tk()
-      self.root.geometry("900x550")
+      self.root.geometry("650x550")
       self.root.title("FolderWatcher")
       self.root.config(bg="grey")
 
@@ -377,14 +377,14 @@ class GUI:
       style.configure("TLabel", background="lightgrey")
 
       self.root.grid_rowconfigure(0, minsize=400, weight=1)
-      self.root.grid_columnconfigure(0, minsize=400, weight=1)
+      self.root.grid_columnconfigure(0, minsize=350, weight=1) 
       self.root.grid_columnconfigure(1, weight=1)
 
       self.leftFrame = Frame(self.root, borderwidth=2, relief="solid", width=400, height=600)
       self.leftFrame.config(background="lightgrey")
       self.leftFrame.grid(row=0, column=0, padx=10, pady=5)
 
-      self.rightFrame = Frame(self.root, borderwidth=2, relief="solid", width=450, height=600)
+      self.rightFrame = Frame(self.root, borderwidth=2, relief="solid", width=250, height=600)
       self.rightFrame.grid(row=0, column=1, padx=10, pady=5, sticky=E)
 
       self.exitButton = ttk.Button(self.root, command=self.stopWatch,  text="EXIT")
@@ -439,7 +439,7 @@ class GUI:
       scrollbar = Scrollbar(self.rightFrame, orient='vertical')
       scrollbar.pack(side=RIGHT, fill=BOTH)
 
-      self.lb = Listbox(self.rightFrame, height=65, width=55)
+      self.lb = Listbox(self.rightFrame, height=65, width=45)
       self.lb.pack(fill=BOTH)
 
       self.lb.config(yscrollcommand = scrollbar.set)
