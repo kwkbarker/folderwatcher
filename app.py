@@ -60,7 +60,7 @@ class Watch():
     
     try:
       while gui.watchdog != None:
-        print("watch running")
+        print("Watch running...")
         time.sleep(5)
     except KeyboardInterrupt:
       self.observer.stop()
@@ -89,13 +89,12 @@ class Handler(FileSystemEventHandler):
        
         if dir_name != self.parent:
           # remove leading numbers
-          ticket_name_list = dir_name.split('-')[1:]
+          ticket_name_list = dir_name.split('-')
           if len(ticket_name_list) > 1 and ticket_name_list[0].isnumeric()\
               and ticket_name_list[1].isnumeric():
-            ticket_name = ""
-            for tnl in ticket_name_list:
-              ticket_name = ticket_name + tnl + "-"
-            ticket_name = ticket_name[:-1]
+            ticket_name = ticket_name_list[1]
+            for tnl in ticket_name_list[2:]:
+              ticket_name = ticket_name + "-" + tnl
           else:
             ticket_name = dir_name
           # rename original folder
@@ -224,19 +223,20 @@ class GUI:
                 shutil.copy(srcFile, destFile)
 
                 # thumbnail creation
-                if self.thumbnail.get():   
-                  if f"{self.thumbNum.get()}.jpg" in sfile:
-                    newFilename = f"{thumbName}.jpg"
-                    newSrc = os.path.join(path, newFilename)
-                    os.rename(srcFile, newSrc)
-                    destThumb = os.path.join(self.thumb.get(), newFilename)
-                    img = cv.imread(newSrc)
-                    scale_percent = 60 # percent of original size
-                    width = int(img.shape[1] * scale_percent / 100)
-                    height = int(img.shape[0] * scale_percent / 100)
-                    dim = (width, height)
-                    cv.resize(img, dim, interpolation = cv.INTER_AREA)
-                    shutil.copy(os.path.join(newSrc), destThumb)
+                if self.thumbnail.get():
+                  if not os.path.exists(os.path.join(self.thumb.get(), f"{thumbName}.jpg")):
+                    if f"{self.thumbNum.get()}.jpg" in sfile:
+                      newFilename = f"{thumbName}.jpg"
+                      newSrc = os.path.join(path, newFilename)
+                      os.rename(srcFile, newSrc)
+                      destThumb = os.path.join(self.thumb.get(), newFilename)
+                      img = cv.imread(newSrc)
+                      scale_percent = 60 # percent of original size
+                      width = int(img.shape[1] * scale_percent / 100)
+                      height = int(img.shape[0] * scale_percent / 100)
+                      dim = (width, height)
+                      cv.resize(img, dim, interpolation = cv.INTER_AREA)
+                      shutil.copy(os.path.join(newSrc), destThumb)
             
             else:
                 shutil.move(srcFile, destFile)
