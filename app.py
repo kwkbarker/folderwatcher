@@ -236,6 +236,8 @@ class GUI:
                       height = int(img.shape[0] * scale_percent / 100)
                       dim = (width, height)
                       cv.resize(img, dim, interpolation = cv.INTER_AREA)
+                      img_rotate_90_clockwise = cv.rotate(img, cv.ROTATE_90_CLOCKWISE)
+                      cv.imwrite(newSrc, img_rotate_90_clockwise)
                       shutil.move(os.path.join(newSrc), destThumb)
             
             else:
@@ -426,9 +428,6 @@ class GUI:
       self.archButton.config(style= "redButton.TButton")
 
       self.UserFileInput(
-        # "/Users/kevinbarker/Dropbox/Mac/Desktop/dest/", "Destination Directory: ", 
-        # "/Users/kevinbarker/Dropbox/Mac/Desktop/drop/", "Drop Folder: ", 
-        # "/Users/kevinbarker/Dropbox/Mac/Desktop/arch/", "Archive Folder: "
 
         "None Selected", "Destination Directory: ", 
         "None Selected", "Drop Folder: ", 
