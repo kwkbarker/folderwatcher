@@ -78,7 +78,7 @@ class Handler(FileSystemEventHandler):
 
     def on_created(self, event):
         if event.is_directory:
-            src, dir_name = os.path.split(event.src_path)
+            _, dir_name = os.path.split(event.src_path)
 
             if os.path.exists(event.src_path):
 
@@ -86,18 +86,16 @@ class Handler(FileSystemEventHandler):
                     # remove leading numbers
                     ticket_name_list = dir_name.split("-")
                     if (
-                        len(ticket_name_list) > 1
+                        len(ticket_name_list) > 2
                         and ticket_name_list[0].isnumeric()
                         and ticket_name_list[1].isnumeric()
                     ):
-                        ticket_name = ticket_name_list[1]
-                        for tnl in ticket_name_list[2:]:
-                            ticket_name = ticket_name + "-" + tnl
+                        ticket_name = ticket_name_list[2]
+                        if len(ticket_name_list) > 3:
+                            for tnl in ticket_name_list[3:]:
+                                ticket_name = ticket_name + "-" + tnl
                     else:
                         ticket_name = dir_name
-                    # rename original folder
-                    new_path = os.path.join(src, ticket_name)
-                    os.rename(event.src_path, new_path)
 
                     # determine pose folder based on filename suffix
                     pose = ticket_name.split("_")[-1]
@@ -119,13 +117,13 @@ class Handler(FileSystemEventHandler):
                     self.gui.lbText("Moving folder " + dir_name + "...")
 
                     self.gui.copyFilesWithProgress(
-                        new_path, destination, ticket_name, "copy"
+                        event.src_path, destination, ticket_name, "copy"
                     )
 
                     self.gui.lbText("Archiving folder " + dir_name + "...")
-                    self.gui.copyFilesWithProgress(new_path, archive, None)
+                    self.gui.copyFilesWithProgress(event.src_path, archive, None)
 
-                    shutil.rmtree(new_path)
+                    shutil.rmtree(event.src_path)
 
                     self.gui.lbText("Process complete.")
 
@@ -222,13 +220,15 @@ class GUI:
 
                     # thumbnail creation
                     if self.thumbnail.get():
-                        thumIdx = str(self.thumbNum.get())
+                        
+                        thumIdx = self.thumbNum.get()
                         while len(thumIdx) < 4:
                             thumIdx = "0" + thumIdx
                         if f"{thumIdx}.jpg" in sfile:
+                            self.lbText("Writing thumbnail...")
                             newFilename = f"{thumbName}.jpg"
                             newSrc = os.path.join(path, newFilename)
-                            os.rename(srcFile, newSrc)
+                            shutil.copy(srcFile, newSrc)
                             destThumb = os.path.join(self.thumb.get(), newFilename)
                             img = cv.imread(newSrc)
                             scale_percent = 60  # percent of original size
@@ -240,7 +240,7 @@ class GUI:
                                 img, cv.ROTATE_90_CLOCKWISE
                             )
                             cv.imwrite(newSrc, img_rotate_90_clockwise)
-                            shutil.move(os.path.join(newSrc), destThumb)
+                            shutil.move(newSrc, destThumb)
 
                 else:
                     shutil.move(srcFile, destFile)
@@ -248,6 +248,9 @@ class GUI:
                 numCopied += 1
 
                 p["value"] = int((numCopied / numFiles) * 100)
+
+        if self.thumbnail.get() and not self.thumbNum.get().isdigit() and protocol=="copy":
+            self.lbText("Error: no valid Thumbnail Index entered. No thumbnail created.")
 
     def lbText(self, text):
         self.lbidx.set(self.lbidx.get() + 1)
