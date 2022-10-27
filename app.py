@@ -46,8 +46,7 @@ class Watch:
         self.dropbox = dropbox
 
     def run(self, gui):
-        if not os.path.isdir(self.dropbox):
-            os.makedirs(self.dropbox)
+        makedirs(self.dropbox)
         rt, parent_folder = os.path.split(self.dropbox)
         event_handler = Handler(self.destination, parent_folder, gui)
 
@@ -176,6 +175,10 @@ class GUI:
             self.thumb.set(dirname)
             folder = os.path.split(dirname)[-1]
             self.thumbAbbr.set(f".../{folder}")
+            #### CREATE THUMB FOLDERS ####
+            for cat in CATEGORIES:
+                if cat != "Bad":
+                    makedirs(os.path.join(dirname, cat))
         self.setButtonColorRG(thumbButton, self.thumb)
         self.checkRunButtonState()
 
@@ -218,18 +221,34 @@ class GUI:
                 if protocol == "copy":
                     shutil.copy(srcFile, destFile)
 
+                    # determine pose folder based on filename suffix
+                    pose = thumbName.split("_")[-1]
+
                     # thumbnail creation
-                    if self.thumbnail.get():
-                        
+                    if (
+                        self.thumbnail.get()
+                        and pose.lower() != "b"
+                        or pose.lower() == "bad"
+                    ):
                         thumIdx = self.thumbNum.get()
                         while len(thumIdx) < 4:
                             thumIdx = "0" + thumIdx
                         if f"{thumIdx}.jpg" in sfile:
+
+                            if pose.lower() == "a":
+                                destination_subfolder = "Apose"
+                            elif pose.lower() == "s":
+                                destination_subfolder = "Statue"
+                            else:
+                                destination_subfolder = "Custom"
+
                             self.lbText("Writing thumbnail...")
                             newFilename = f"{thumbName}.jpg"
                             newSrc = os.path.join(path, newFilename)
                             shutil.copy(srcFile, newSrc)
-                            destThumb = os.path.join(self.thumb.get(), newFilename)
+                            destThumb = os.path.join(
+                                self.thumb.get(), destination_subfolder, newFilename
+                            )
                             img = cv.imread(newSrc)
                             scale_percent = 60  # percent of original size
                             width = int(img.shape[1] * scale_percent / 100)
@@ -249,8 +268,14 @@ class GUI:
 
                 p["value"] = int((numCopied / numFiles) * 100)
 
-        if self.thumbnail.get() and not self.thumbNum.get().isdigit() and protocol=="copy":
-            self.lbText("Error: no valid Thumbnail Index entered. No thumbnail created.")
+        if (
+            self.thumbnail.get()
+            and not self.thumbNum.get().isdigit()
+            and protocol == "copy"
+        ):
+            self.lbText(
+                "Error: no valid Thumbnail Index entered. No thumbnail created."
+            )
 
     def lbText(self, text):
         self.lbidx.set(self.lbidx.get() + 1)
@@ -281,12 +306,9 @@ class GUI:
         dest = self.var.get()
 
         for cat in CATEGORIES:
-            if not os.path.exists(os.path.join(dest, cat)):
-                os.makedirs(os.path.join(dest, cat))
-        if not os.path.exists(self.arch.get()):
-            os.makedirs(self.arch.get())
-        if not os.path.exists(self.thumb.get()):
-            os.makedirs(self.thumb.get())
+            makedirs(os.path.join(dest, cat))
+        makedirs(self.arch.get())
+        makedirs(self.thumb.get())
 
         if not self.thread:
             self.thread = threading.Thread(target=self.startWatch)
