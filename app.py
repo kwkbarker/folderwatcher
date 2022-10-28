@@ -125,6 +125,7 @@ class Handler(FileSystemEventHandler):
                     shutil.rmtree(event.src_path)
 
                     self.gui.lbText("Process complete.")
+                    self.gui.lb.see(END)
 
 
 class GUI:
@@ -267,6 +268,7 @@ class GUI:
                 numCopied += 1
 
                 p["value"] = int((numCopied / numFiles) * 100)
+                self.lb.see(END)
 
         if (
             self.thumbnail.get()
